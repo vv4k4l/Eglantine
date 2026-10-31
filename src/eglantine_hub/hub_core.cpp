@@ -440,10 +440,11 @@ std::string CleanTitle(std::string_view file_stem) {
 }
 
 std::optional<std::uint64_t> TitleIdFromText(std::string_view text) {
-    // Title IDs are 16 hex digits starting with 01, e.g. 0100A3D008C5C000. Require a non-hex
+    // Title IDs are 16 hex digits starting with 01 (Switch, e.g. 0100A3D008C5C000) or 04
+    // (Switch 2, e.g. 0400380020056000). Require a non-hex
     // character (or the edge) on both sides so longer hex runs such as NCA IDs do not match.
     for (std::size_t i = 0; i + 16 <= text.size(); ++i) {
-        if (text[i] != '0' || text[i + 1] != '1') {
+        if (text[i] != '0' || (text[i + 1] != '1' && text[i + 1] != '4')) {
             continue;
         }
         if (i > 0 && IsHexDigit(text[i - 1])) {
