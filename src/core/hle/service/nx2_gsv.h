@@ -1154,22 +1154,14 @@ private:
         // (in 3840x2160 images), 1920x1080 handheld. It keeps its docked images after a switch to
         // handheld, and showing all of them put the frame in a corner with stale docked frames
         // around it.
-        // Other titles do the same in docked mode (title 0400380020056000 drew 2560x1440 in
-        // 3840x2160 images, showing its frame in the top-left corner with stale frames around it),
-        // so docked 4K images are cropped to 1440p for every title. EDEN_NX2_DOCKED_CROP=0 turns
-        // this off for a game that really fills the whole 4K image.
-        static const bool docked_crop = [] {
-            const char* value = std::getenv("EDEN_NX2_DOCKED_CROP");
-            return value == nullptr || value[0] != '0';
-        }();
-        if (system.GetApplicationProcessProgramID() == 0x0400C3F00006E000ULL &&
-            !Settings::IsDockedMode()) {
-            crop_width = (std::min)(crop_width, 1920U);
-            crop_height = (std::min)(crop_height, 1080U);
-        } else if (docked_crop && Settings::IsDockedMode() && layout.width == 3840 &&
-                   layout.height == 2160) {
-            crop_width = 2560;
-            crop_height = 1440;
+        if (system.GetApplicationProcessProgramID() == 0x0400C3F00006E000ULL) {
+            if (!Settings::IsDockedMode()) {
+                crop_width = (std::min)(crop_width, 1920U);
+                crop_height = (std::min)(crop_height, 1080U);
+            } else if (layout.width == 3840 && layout.height == 2160) {
+                crop_width = 2560;
+                crop_height = 1440;
+            }
         }
         static const u32 env_crop_w = [] {
             const char* v = std::getenv("EDEN_NX2_CROP_WIDTH");
