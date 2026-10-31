@@ -132,7 +132,6 @@ jobs:
           -DENABLE_UPDATE_CHECKER=OFF
           -DUSE_DISCORD_PRESENCE=OFF
           -DYUZU_MSVC_AVX2=ON
-          -DENABLE_LTO=ON
 
       - name: Build
         shell: bash
@@ -249,7 +248,7 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --target "${GITHUB_SHA}" \
             --prerelease \
-            --title "Eglantine optimized (AVX2 + LTO) ${GITHUB_REF_NAME} build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})" \
+            --title "Eglantine optimized (AVX2) ${GITHUB_REF_NAME} build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})" \
             --notes "Automatic build of ${GITHUB_REF_NAME} at ${GITHUB_SHA}.
 
           Windows: extract the zip and run eglantine-hub.exe (game library and tuned launcher) or eglantine.exe, or eden-cli.exe from a terminal. Built with AVX2: needs an Intel Haswell / AMD Zen or newer CPU.
