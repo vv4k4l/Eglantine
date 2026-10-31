@@ -430,6 +430,7 @@ QWidget* HubWindow::BuildDetailsPanel() {
     auto* scroll = new QScrollArea(details_stack_);
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     auto* panel = new QWidget(scroll);
     auto* layout = new QVBoxLayout(panel);
     layout->setContentsMargins(16, 8, 12, 8);
@@ -900,7 +901,10 @@ void HubWindow::ShowDetails() {
     }
     integrity_value_->setText(check);
     played_value_->setText(FormatPlayed(record->last_played, record->hub_seconds));
-    location_value_->setText(QDir::toNativeSeparators(ToQString(f.path)));
+    // Paths have no spaces to wrap at, so allow breaks after each separator.
+    QString location = QDir::toNativeSeparators(ToQString(f.path));
+    location.replace(QDir::separator(), QString(QDir::separator()) + QChar(0x200B));
+    location_value_->setText(location);
 
     const bool launchable = f.kind != Hub::ContentKind::Update && f.kind != Hub::ContentKind::DLC;
     play_button_->setEnabled(launchable);
