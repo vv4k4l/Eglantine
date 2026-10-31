@@ -292,6 +292,11 @@ endif()
 if (ENABLE_QT)
     add_subdirectory(qt_common)
     add_subdirectory(yuzu)
+
+    option(EGLANTINE_HUB "Build Eglantine Hub, the companion game launcher" ON)
+    if (EGLANTINE_HUB)
+        add_subdirectory(eglantine_hub)
+    endif()
 endif()
 
 if (ENABLE_WEB_SERVICE)

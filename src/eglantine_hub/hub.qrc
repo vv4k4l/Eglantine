@@ -1,0 +1,5 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/hub">
+    <file alias="icon.png">../../dist/Eglantine.png</file>
+</qresource>
+</RCC>

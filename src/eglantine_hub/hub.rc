@@ -1,0 +1,7 @@
+// SPDX-FileCopyrightText: Copyright 2026 Eglantine Hub contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "winresrc.h"
+
+// Qt requires the default application icon to be named IDI_ICON1.
+IDI_ICON1 ICON "../../dist/eden.ico"

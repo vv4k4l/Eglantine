@@ -115,7 +115,6 @@ jobs:
           -DENABLE_UPDATE_CHECKER=OFF
           -DUSE_DISCORD_PRESENCE=OFF
           -DYUZU_BUILD_PRESET=v3
-          -DENABLE_LTO=ON
 
       - name: Configure Windows
         if: matrix.platform == 'windows-x86_64'
@@ -137,7 +136,7 @@ jobs:
 
       - name: Build
         shell: bash
-        run: cmake --build build/release --target yuzu yuzu-cmd --parallel
+        run: cmake --build build/release --target yuzu yuzu-cmd eglantine-hub --parallel
 
       # A self-contained AppImage: linuxdeploy bundles every library the two programs need except
       # the base system ones (glibc, X11/Wayland client libraries, the GPU driver and Vulkan loader),
@@ -149,6 +148,7 @@ jobs:
           set -euo pipefail
           test -x build/release/bin/eglantine
           test -x build/release/bin/eden-cli
+          test -x build/release/bin/eglantine-hub
           # Libraries Qt's xcb platform plugin needs, so linuxdeploy can resolve and bundle them.
           sudo apt-get install -y --no-install-recommends libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
             libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
@@ -169,6 +169,7 @@ jobs:
           "$tools/linuxdeploy-x86_64.AppImage" --appdir AppDir \
             --executable build/release/bin/eglantine \
             --executable build/release/bin/eden-cli \
+            --executable build/release/bin/eglantine-hub \
             --desktop-file dist/dev.eden_emu.eden.desktop \
             --icon-file "$icon" \
             --plugin qt \
@@ -180,7 +181,7 @@ jobs:
         if: matrix.platform == 'windows-x86_64'
         shell: pwsh
         run: |
-          foreach ($exe in 'eglantine.exe', 'eden-cli.exe') {
+          foreach ($exe in 'eglantine.exe', 'eden-cli.exe', 'eglantine-hub.exe') {
             if (-not (Test-Path "build/release/bin/$exe")) {
               throw "build/release/bin/$exe was not produced"
             }
@@ -251,5 +252,5 @@ jobs:
             --title "Eglantine optimized (AVX2 + LTO) ${GITHUB_REF_NAME} build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})" \
             --notes "Automatic build of ${GITHUB_REF_NAME} at ${GITHUB_SHA}.
 
-          Windows: extract the zip and run eglantine.exe, or eden-cli.exe from a terminal.
+          Windows: extract the zip and run eglantine-hub.exe (game library and tuned launcher) or eglantine.exe, or eden-cli.exe from a terminal. Built with AVX2: needs an Intel Haswell / AMD Zen or newer CPU.
           Linux: make the AppImage executable (chmod +x) and run it; it bundles its libraries and needs glibc 2.39 or newer (Ubuntu 24.04, Fedora 40, Debian 13, Arch)."
