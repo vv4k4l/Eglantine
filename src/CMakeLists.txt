@@ -142,6 +142,14 @@ if (MSVC AND NOT CXX_CLANG)
 
     if (ARCHITECTURE_x86_64)
         add_compile_options(/QIntel-jcc-erratum)
+
+        # Let MSVC use AVX2/FMA/BMI in the emulator's own C++ code (GPU emulation, texture
+        # decoding, audio, etc). Any Intel CPU from Haswell (2013) or AMD from Zen 1 supports it;
+        # older CPUs will crash on start with this build.
+        option(YUZU_MSVC_AVX2 "Compile with /arch:AVX2 (needs an AVX2-capable CPU)" OFF)
+        if (YUZU_MSVC_AVX2)
+            add_compile_options(/arch:AVX2)
+        endif()
     endif()
 
     set(CMAKE_EXE_LINKER_FLAGS_DEBUG   "/DEBUG /MANIFEST:NO" CACHE STRING "" FORCE)

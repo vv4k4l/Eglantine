@@ -11,6 +11,7 @@ on:
     branches:
       - nx2
       - nx2-experimental
+      - optimized-13700f
 
 permissions:
   contents: read
@@ -113,6 +114,8 @@ jobs:
           -DVulkanUtilityLibraries_FORCE_BUNDLED=ON
           -DENABLE_UPDATE_CHECKER=OFF
           -DUSE_DISCORD_PRESENCE=OFF
+          -DYUZU_BUILD_PRESET=v3
+          -DENABLE_LTO=ON
 
       - name: Configure Windows
         if: matrix.platform == 'windows-x86_64'
@@ -129,6 +132,8 @@ jobs:
           -DYUZU_USE_BUNDLED_SDL3=ON
           -DENABLE_UPDATE_CHECKER=OFF
           -DUSE_DISCORD_PRESENCE=OFF
+          -DYUZU_MSVC_AVX2=ON
+          -DENABLE_LTO=ON
 
       - name: Build
         shell: bash
@@ -180,7 +185,12 @@ jobs:
               throw "build/release/bin/$exe was not produced"
             }
           }
-          windeployqt --release --no-translations build/release/bin/eglantine.exe
+          windeployqt --release --no-translations --no-opengl-sw build/release/bin/eglantine.exe
+          # Trim the package: Qt loads its plugins from the folders next to the exe, so the
+          # plugins/ copy made by the post-build step is never used; the .pdb debug symbols are
+          # only needed for crash debugging.
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build/release/bin/plugins
+          Remove-Item -Force -ErrorAction SilentlyContinue build/release/bin/*.pdb
 
       # The artifact is the bin folder itself: GitHub zips artifacts on download, and uploading a
       # zip gave a zip inside a zip. The release job zips it once for the release.
@@ -238,7 +248,7 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --target "${GITHUB_SHA}" \
             --prerelease \
-            --title "Eglantine ${GITHUB_REF_NAME} build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})" \
+            --title "Eglantine optimized (AVX2 + LTO) ${GITHUB_REF_NAME} build ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7})" \
             --notes "Automatic build of ${GITHUB_REF_NAME} at ${GITHUB_SHA}.
 
           Windows: extract the zip and run eglantine.exe, or eden-cli.exe from a terminal.
