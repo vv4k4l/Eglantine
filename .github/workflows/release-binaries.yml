@@ -618,7 +618,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          dir=$(find artifacts -mindepth 1 -maxdepth 1 -type d | head -1)
+          # (download-artifact puts a single artifact's files straight into artifacts/, not in a
+          # subfolder: find the folder holding the emulator instead of guessing the layout)
+          main=$(find artifacts -type f -name '*.exe' -size +1M | head -1)
+          if [ -z "$main" ]; then echo "no emulator .exe in the artifact:"; find artifacts | head -40; exit 1; fi
+          dir=$(dirname "$main")
           zip_name="hortensia-${GITHUB_SHA::10}-win64.zip"
           (cd "$dir" && zip -qr "$GITHUB_WORKSPACE/$zip_name" .)
           gh release create "hortensia-build-${GITHUB_RUN_NUMBER}" "$zip_name" \
