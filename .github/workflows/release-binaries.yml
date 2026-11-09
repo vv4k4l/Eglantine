@@ -242,6 +242,7 @@ jobs:
         run: >-
           cmake -S . -B build/release -G Ninja
           -DCMAKE_BUILD_TYPE=Release
+          -DENABLE_WERROR=OFF
           -DBUILD_TESTING=OFF
           -DYUZU_TESTS=OFF
           -DYUZU_CMD=ON
@@ -263,6 +264,7 @@ jobs:
           set -euo pipefail
           cmake -S . -B build/release -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_WERROR=OFF \
             -DBUILD_TESTING=OFF \
             -DYUZU_TESTS=OFF \
             -DYUZU_CMD=ON \
@@ -290,6 +292,7 @@ jobs:
             -Wno-profile-instr-unprofiled -Wno-profile-instr-out-of-date"
           cmake -S . -B build/release -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_WERROR=OFF \
             -DBUILD_TESTING=OFF \
             -DYUZU_TESTS=OFF \
             -DYUZU_CMD=ON \
