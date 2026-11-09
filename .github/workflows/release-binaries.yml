@@ -2,19 +2,9 @@ name: release-binaries
 
 on:
   workflow_dispatch:
-    inputs:
-      publish_release:
-        description: Publish the binaries as a GitHub release
-        type: boolean
-        default: false
-      draft:
-        description: Create release as draft (visible only to maintainers)
-        type: boolean
-        default: true
-      release_tag:
-        description: Release tag name (e.g. v0.2.0)
-        type: string
-        default: ''
+  push:
+    branches:
+      - build/hortensia
 permissions:
   contents: read
 
@@ -44,38 +34,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The two -pgo builds are the same programs compiled by clang against the repo's
-          # eglantine.profdata. Eden's profile (Eden-CI/PGO) comes from Switch 1 games: with it Mario
-          # Kart World ran at about half the speed of the normal build, with eglantine.profdata at
-          # about the same speed. Windows uses MSYS2's MinGW clang like Eden does; MSVC cannot read
-          # an LLVM .profdata file.
-          - platform: linux-x86_64-pgo
-            runner: ubuntu-24.04
-            pgo: true
-            lto: true
           - platform: windows-x86_64
             runner: windows-2022
-          # Same PGO build for CPUs with AVX2 (x86-64-v3: Ryzen, Intel 4th gen and newer), like
-          # Selevet's tuned build.
-          - platform: windows-x86_64-pgo-avx2
-            runner: windows-2022
-            pgo: true
-            mingw: true
-            march: x86-64-v3
-            lto: true
-          # PGO training build: instrumented, writes .profraw files while you play.
-          - platform: windows-x86_64-pgo-train
-            runner: windows-2022
-            pgo: true
-            mingw: true
-            march: x86-64-v3
-            train: true
-          - platform: linux-aarch64-pgo
-            runner: ubuntu-24.04-arm
-            pgo: true
-          - platform: macos-arm64
-            runner: macos-15
-
     steps:
       - name: Check out source
         uses: actions/checkout@v5
@@ -253,7 +213,7 @@ jobs:
             -DVulkanHeaders_FORCE_BUNDLED=ON
             -DVulkanUtilityLibraries_FORCE_BUNDLED=ON
             -DENABLE_UPDATE_CHECKER=ON
-            -DLICHII_BUILD_TAG=build-${{ github.run_number }}
+            -DLICHII_BUILD_TAG=
             -DLICHII_BUILD_PLATFORM=${{ matrix.platform }}
             -DUSE_DISCORD_PRESENCE=OFF
             -DUSE_CCACHE=ON
@@ -300,7 +260,7 @@ jobs:
           -DYUZU_USE_BUNDLED_QT=OFF
           -DYUZU_USE_BUNDLED_SDL3=ON
           -DENABLE_UPDATE_CHECKER=ON
-          -DLICHII_BUILD_TAG=build-${{ github.run_number }}
+          -DLICHII_BUILD_TAG=
           -DLICHII_BUILD_PLATFORM=${{ matrix.platform }}
           -DUSE_DISCORD_PRESENCE=OFF
           -DCMAKE_C_COMPILER_LAUNCHER=sccache
@@ -324,7 +284,7 @@ jobs:
             -DVulkanHeaders_FORCE_BUNDLED=ON \
             -DVulkanUtilityLibraries_FORCE_BUNDLED=ON \
             -DENABLE_UPDATE_CHECKER=ON \
-            -DLICHII_BUILD_TAG=build-${{ github.run_number }} \
+            -DLICHII_BUILD_TAG= \
             -DLICHII_BUILD_PLATFORM=${{ matrix.platform }} \
             -DUSE_DISCORD_PRESENCE=OFF \
             -DUSE_CCACHE=ON
@@ -373,7 +333,7 @@ jobs:
             -DVulkanHeaders_FORCE_BUNDLED=ON \
             -DVulkanUtilityLibraries_FORCE_BUNDLED=ON \
             -DENABLE_UPDATE_CHECKER=ON \
-            -DLICHII_BUILD_TAG=build-${{ github.run_number }} \
+            -DLICHII_BUILD_TAG= \
             -DLICHII_BUILD_PLATFORM=${{ matrix.platform }} \
             -DUSE_DISCORD_PRESENCE=OFF \
             -DUSE_CCACHE=ON \
@@ -643,7 +603,6 @@ jobs:
   release:
     name: Publish release
     needs: build
-    if: inputs.publish_release
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -651,114 +610,18 @@ jobs:
       - name: Download binaries
         uses: actions/download-artifact@v7
         with:
-          pattern: hortensia-*-${{ github.sha }}
           path: artifacts
 
-      - name: Package release files
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir dist
-          # Asset names drop the commit sha: the release tag already identifies the build, and
-          # stable names let the notes table link to them.
-          strip_sha() { sed "s/-${GITHUB_SHA}//" <<< "$1"; }
-          for artifact in artifacts/*/; do
-            name=$(basename "$artifact")
-            if compgen -G "$artifact*.AppImage" > /dev/null; then
-              # Linux: ship the AppImage and the tar.gz as they are.
-              for file in "$artifact"*.AppImage "$artifact"*.tar.gz; do
-                cp "$file" "dist/$(strip_sha "$(basename "$file")")"
-              done
-            elif compgen -G "$artifact*.zip" > /dev/null; then
-              for file in "$artifact"*.zip "$artifact"*.dmg; do
-                [[ -e "$file" ]] && cp "$file" "dist/$(strip_sha "$(basename "$file")")"
-              done
-            else
-              (cd "$artifact" && zip -qr "${GITHUB_WORKSPACE}/dist/$(strip_sha "$name").zip" .)
-            fi
-          done
-          # Friendly names: one obvious file per system.
-          rename() { [ -e "dist/$1" ] && mv "dist/$1" "dist/$2" || true; }
-          rename hortensia-windows-x86_64-pgo-avx2.zip Hortensia-Windows.zip
-          rename hortensia-windows-x86_64.zip Hortensia-Windows-Compatibility.zip
-          rename hortensia-linux-x86_64-pgo.AppImage Hortensia-Linux.AppImage
-          rename hortensia-linux-aarch64-pgo.AppImage Hortensia-Linux-ARM.AppImage
-          rename hortensia-macos-arm64.zip Hortensia-macOS.zip
-          rm -f dist/*.tar.gz
-          # The PGO training build stays a workflow artifact, not a release file.
-          rm -f dist/hortensia-windows-x86_64-pgo-train.zip
-          ls -la dist
-
-      - name: Create release
+      - name: Publish
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="${{ inputs.release_tag }}"
-          if [ -z "$tag" ]; then
-            if [ "${{ inputs.draft }}" = "false" ]; then
-              tag="v0.2.0"
-            else
-              tag="build-${GITHUB_RUN_NUMBER}"
-            fi
-          fi
-
-          if [ "${{ inputs.draft }}" = "false" ]; then
-            if tag_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null); then
-              if [ "$tag_sha" != "$GITHUB_SHA" ]; then
-                echo "Release tag $tag points to $tag_sha instead of $GITHUB_SHA"
-                exit 1
-              fi
-            else
-              gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-                -f "ref=refs/tags/$tag" -f "sha=$GITHUB_SHA"
-            fi
-          fi
-
-          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}"
-
-          if [ -f "docs/RELEASE_NOTES_${tag}.md" ]; then
-            cp "docs/RELEASE_NOTES_${tag}.md" notes.md
-          else
-            cat > notes.md <<EOF
-          ## Which file do I download?
-
-          | Your computer | Download |
-          | --- | --- |
-          | **Windows** (almost every PC) | [**Hortensia-Windows.zip**](${base}/Hortensia-Windows.zip) |
-          | Windows, if Hortensia doesn't start or shows graphical errors | [Hortensia-Windows-Compatibility.zip](${base}/Hortensia-Windows-Compatibility.zip) |
-          | **Linux** | [**Hortensia-Linux.AppImage**](${base}/Hortensia-Linux.AppImage) ? ARM: [Hortensia-Linux-ARM.AppImage](${base}/Hortensia-Linux-ARM.AppImage) |
-          | **Mac** with Apple Silicon (M1 or newer) | [**Hortensia-macOS.zip**](${base}/Hortensia-macOS.zip) |
-
-          ## How to start
-
-          1. **Windows:** extract the zip into a folder (right-click, *Extract All*) and double-click \`hortensia.exe\`. If Windows warns about an unknown app, click *More info*, then *Run anyway*.
-             **Linux:** make the AppImage executable (\`chmod +x Hortensia-Linux.AppImage\`) and run it.
-             **Mac:** open the zip, drag Hortensia to Applications, then right-click it and choose *Open* the first time.
-          2. At the first start, answer **Yes** to *optimized settings*: Hortensia then sets each game up for your graphics card.
-          3. Add your keys and firmware, then your games folder. The [README](https://github.com/${GITHUB_REPOSITORY}#setting-it-up) explains each step.
-
-          <details><summary>Technical details</summary>
-
-          Built from \`${GITHUB_REF_NAME}\` at ${GITHUB_SHA}. Hortensia-Windows is compiled with MinGW clang, a PGO profile and x86-64-v3 (AVX2, any CPU from 2013 on); Hortensia-Windows-Compatibility is the MSVC build for any x86-64 CPU. The Linux AppImages are clang PGO builds and need glibc 2.39 or newer.
-
-          </details>
-          EOF
-          fi
-
-          draft_flag=""
-          if [ "${{ inputs.draft }}" = "true" ]; then
-            draft_flag="--draft"
-          fi
-
-          title="Hortensia ${tag}"
-          if [ "${{ inputs.draft }}" = "true" ]; then
-            title="Hortensia ${tag} (Draft Test ${GITHUB_SHA::7})"
-          fi
-
-          gh release create "${tag}" dist/* \
-            --repo "${GITHUB_REPOSITORY}" \
-            ${draft_flag} \
-            --title "${title}" \
-            --notes-file notes.md
+          dir=$(find artifacts -mindepth 1 -maxdepth 1 -type d | head -1)
+          zip_name="hortensia-${GITHUB_SHA::10}-win64.zip"
+          (cd "$dir" && zip -qr "$GITHUB_WORKSPACE/$zip_name" .)
+          gh release create "hortensia-build-${GITHUB_RUN_NUMBER}" "$zip_name" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "Hortensia (${GITHUB_SHA::10}), unmodified source, built by GitHub Actions" \
+            --notes "Hortensia built from its public source at commit ${GITHUB_SHA} with the project's own stock Windows (MSVC) recipe. Only the build workflow was changed (Windows only, no update tag). Windows: extract the zip and run the exe inside. GPL-3.0-or-later; all credit to the original developers."
