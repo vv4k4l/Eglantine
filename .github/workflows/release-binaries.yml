@@ -34,8 +34,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: windows-x86_64
+          # Fritchii's own Windows releases are the MinGW clang + PGO build; its newer sources
+          # do not compile under MSVC (/we4459 in src/CMakeLists.txt vs frizti_settings.cpp).
+          - platform: windows-x86_64-pgo
             runner: windows-2022
+            pgo: true
+            mingw: true
     steps:
       - name: Check out source
         uses: actions/checkout@v5
